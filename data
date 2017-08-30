@@ -1,0 +1,561 @@
+#include "redblacktree.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <string.h>
+#define BLACK 0
+#define RED  1
+#define MAX_SIZE 50000
+
+struct element{
+    int key;
+};
+
+struct treeNode{
+    treePointer leftChild;
+    element data;
+    short int color;
+//    int level;
+    treePointer rightChild;
+    treePointer parentp;
+};
+static treePointer *rootp;
+
+    typedef struct element element;
+     typedef struct treeNode *treePointer;
+        
+    void InsertRedBlackNode(treePointer *grandp, treePointer *parent,
+                        element *k);   /* 插入节点操作 */
+    int LevelofRedBlackTree(treePointer T);/*计算树层高函数,采用层序遍历法 */    
+    void preprintree(treePointer ptr);  /* 前序查找打印 */
+    void LeftUnbalance(treePointer *grandp, treePointer *parent);/*处理左边不平衡*/
+    void RightUnbalance(treePointer *grandp, treePointer *parent);/*处理右边不平衡*/
+    void delRedBlackN(treePointer *root, element *k); /* 二叉查找树删除节点操作 */
+    void delFixup(treePointer delNode);        //平衡调整 
+    void leftRotate(treePointer node);
+    void rightRotate(treePointer node);
+
+int main(void)
+{
+    treePointer root = NULL;
+    element k;
+    int i;  
+    rootp = &root;
+    
+
+
+    int n, m[MAX_SIZE];
+    printf("请输入想要排序数据的数量：\n");
+    scanf("%d", &n);
+    assert(n < MAX_SIZE);
+
+    ////////////////////////////////////////////////////////
+    srand(time(0));  //随机生成数据 
+    for (i = 0; i < n; ++i){
+        m[i] = k.key = rand()%100000;
+        InsertRedBlackNode(NULL, &root, &k);
+    }
+    for(i = 0; i < n; ++i){
+        printf("\t%d", m[i]);
+    }
+    printf("\n");
+    preprintree(root);
+    system("pause");
+//    srand(time(0));  //随机生成数据 
+    for (i = 0; i < n; ++i){
+        k.key = m[i];//rand()%100;
+        printf("del-%d-(第%d个）  ", k.key, i+1);
+        delRedBlackN(&root, &k);
+    }
+        preprintree(root);
+        system("pause");
+
+
+/*
+    for(i = 0; i < 4; i++){
+        printf("请输入您想要插入结点的值！\n");
+        scanf("%d", &k.key);
+        InsertRedBlackNode(NULL, &root, &k);
+        preprintree(root);
+    }
+    for(i = 0; i < 4; i++){
+        printf("请输入您想要删除结点的值！\n");
+        scanf("%d", &k.key);
+        delRedBlackN(&root, &k);
+        preprintree(root);
+    }
+*/
+    
+}
+
+void InsertRedBlackNode(treePointer *grandp, treePointer *parent,
+                        element *k)   /* 插入节点操作 */
+{/* If K is in the tree pionted at by node do nothing; otherwise add
+    a new node with data = k */
+    
+    if(!*parent){
+        *parent = (treePointer)malloc(sizeof(struct treeNode));
+        assert(*parent);
+        (*parent)->data.key = k->key;
+        (*parent)->leftChild = (*parent)->rightChild = NULL;
+        if(*parent == *rootp){   //can't be "parent == rootp", why?
+            (*parent)->color = BLACK;
+            (*parent)->parentp = NULL; 
+        }else{
+            (*parent)->color = RED;
+            (*parent)->parentp = *grandp; 
+        } 
+    }else if(k->key < (*parent)->data.key){
+        InsertRedBlackNode(parent, &(*parent)->leftChild, k);
+        if((*parent)->color == RED && (*parent)->leftChild->color == RED)
+            LeftUnbalance(grandp, parent);
+    }else if(k->key > (*parent)->data.key){
+        InsertRedBlackNode(parent, &(*parent)->rightChild, k);
+        if((*parent)->color == RED && (*parent)->rightChild->color == RED)
+            RightUnbalance(grandp, parent);
+    }else{
+        printf("%d is already in the tree, can not be inserted!\n", k->key);
+        printf("Please insert another value!\n");
+        return ;    
+    }
+}
+
+int LevelofRedBlackTree(treePointer T) /*计算树层高函数,采用层序遍历法 */
+{
+    treePointer p = T, Q[MAX_SIZE]; 
+    int front = -1, rear = -1, last = 0, level = 0; 
+    
+    if(!T)
+        return 0; 
+    Q[++rear] = p; 
+    while(front < rear){ 
+        p = Q[++front]; 
+        if(p->leftChild) 
+            Q[++rear] = p->leftChild; 
+        if(p->rightChild) 
+            Q[++rear] = p->rightChild; 
+        if(front == last){ 
+            last = rear; 
+            level++;               //层次+1 
+        } 
+    } 
+    return level; 
+}
+
+void preprintree(treePointer ptr)
+{
+    if(ptr == NULL){ /* 为空树则返回 */
+        printf("此树为空！\n");
+        return ;
+    } 
+    printf("节点%d:color is %d; lchild is %p；rtchild is %p；parent is %d.\n",
+         ptr->data.key, ptr->color, ptr->leftChild, ptr->rightChild,
+          (ptr->parentp == NULL ? 0 : ptr->parentp->data.key));
+    if(ptr->leftChild != NULL)
+        preprintree(ptr->leftChild);
+    if(ptr->rightChild != NULL)
+        preprintree(ptr->rightChild);
+}
+
+void LeftUnbalance(treePointer *grandp, treePointer *parent) //左边不平衡 
+{
+    treePointer tempg, tempp, temps;
+    
+    if(parent == &(*grandp)->leftChild /* LLr不平衡 */
+    && (*grandp)->rightChild != NULL && (*grandp)->rightChild->color == RED)
+    {//牢记：必须先判断是否为真，否则可能尝试读取空址值，程序就会出错 
+        printf("LLr:OK\n");
+        if(rootp == grandp){
+            (*grandp)->rightChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }else{
+            (*grandp)->color = RED;
+            (*grandp)->rightChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }
+    }else if(parent == &(*grandp)->leftChild /* LLb不平衡,需要旋转 */
+    && (*grandp)->rightChild == NULL || (*grandp)->rightChild->color == BLACK){
+        printf("LLb:OK\n");
+        tempg = *grandp;    tempg->color = RED;
+        tempp = *parent;    tempp->color = BLACK;
+        tempg->leftChild = (*parent)->rightChild;
+        if(tempp->rightChild)                    //连接父结点
+            tempp->rightChild->parentp = tempg;
+        tempp->parentp = tempg->parentp;      
+        tempg->parentp = tempp;
+        *grandp = tempp;
+        (*grandp)->rightChild = tempg;
+        
+    }else if(parent == &(*grandp)->rightChild /* RLr不平衡 */
+    &&    (*grandp)->leftChild != NULL && (*grandp)->leftChild->color == RED){
+        printf("RLr:OK\n");
+        if(rootp == grandp){
+            (*grandp)->leftChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }else{
+            (*grandp)->color = RED;
+            (*grandp)->leftChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }
+    }else if(parent == &(*grandp)->rightChild /* RLb不平衡,需要旋转 */
+    && (*grandp)->leftChild == NULL || (*grandp)->leftChild->color == BLACK){
+        printf("RLb:OK\n");
+        tempg = *grandp;  //保存祖结点 
+        tempp = *parent;  //保存父结点 
+        tempg->rightChild = (*parent)->leftChild->leftChild;
+        tempg->color = RED;
+        temps = tempp->leftChild; //保存子结点 
+        temps->parentp = tempg->parentp;
+        if(temps->leftChild)
+            temps->leftChild->parentp = tempg;
+        if(temps->rightChild)
+            temps->rightChild->parentp = tempp;
+        tempp->parentp = tempp->leftChild;
+        tempg->parentp = tempp->leftChild;
+        tempp->leftChild = temps->rightChild;
+        temps->rightChild = tempp;
+        temps->leftChild = tempg;
+        temps->color = BLACK;
+        *grandp = temps;
+    }
+}
+
+void RightUnbalance(treePointer *grandp, treePointer *parent)//右边不平衡 
+{
+    treePointer tempg, tempp, temps;
+    
+    if(parent == &(*grandp)->leftChild /* LRb不平衡,需要旋转 */
+    && (*grandp)->rightChild == NULL || (*grandp)->rightChild->color == BLACK)
+    {//牢记：必须先判断是否为空，否则先读取空址值，程序就会出错 
+        printf("LRb:OK\n");
+        tempg = *grandp;   //保存祖结点 
+        tempp = *parent;   //保存父结点 
+        tempg->leftChild = (*parent)->rightChild->rightChild;
+        tempg->color = RED;  //不知道为什么上行代码执行后*parent会变成NULL。 
+        temps = tempp->rightChild; //保存子结点 
+        
+        temps->parentp = tempg->parentp;        //连接父结点 
+        if(temps->leftChild)
+            temps->leftChild->parentp = tempp;
+        if(temps->rightChild)
+            temps->rightChild->parentp = tempg;
+        tempp->parentp = tempp->rightChild;
+        tempg->parentp = tempp->rightChild;
+
+        tempp->rightChild = temps->leftChild;
+        temps->leftChild = tempp;
+        temps->rightChild = tempg;
+        temps->color = BLACK;
+        *grandp = temps;
+    }else if(parent == &(*grandp)->leftChild /* LRr不平衡 */
+    &&(*grandp)->rightChild != NULL &&(*grandp)->rightChild->color==RED){
+        printf("LRr:OK\n");
+        if(rootp == grandp){
+            (*grandp)->rightChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }else{
+            (*grandp)->color = RED;
+            (*grandp)->rightChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }
+    }else if(parent == &(*grandp)->rightChild /* RRb不平衡,需要旋转 */
+    && ((*grandp)->leftChild == NULL || (*grandp)->leftChild->color == BLACK)){
+        printf("RRb:OK\n");
+        tempg = *grandp;    tempg->color = RED;
+        tempp = *parent;    tempp->color = BLACK;
+        tempg->rightChild = (*parent)->leftChild;
+        //为什么上面这行代码执行完后中，*parent的值会变为NULL呢？
+        if(tempp->leftChild)                    //连接父结点
+            tempp->leftChild->parentp = tempg;
+        tempp->parentp = tempg->parentp;      
+        tempg->parentp = tempp;
+        *grandp = tempp;
+        (*grandp)->leftChild = tempg;
+    }else if(parent == &(*grandp)->rightChild /* RRr不平衡 */
+    &&(*grandp)->leftChild != NULL && (*grandp)->leftChild->color == RED){
+        printf("RRr:OK\n");
+        if(rootp == grandp){
+            (*grandp)->leftChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }else{
+            (*grandp)->color = RED;
+            (*grandp)->leftChild->color = BLACK;
+            (*parent)->color = BLACK;
+        }
+    }
+}
+
+/*学习借鉴了网上《一篇不错的红黑树代码》一文,该文对红黑树的算法有图文介绍 */
+void delFixup(treePointer delposition)   
+{
+    assert(delposition);
+    treePointer p = delposition;
+    
+    while (p != *rootp && p->color == BLACK) {
+        if (p->parentp->leftChild && p == p->parentp->leftChild) {//删除节点在左子树 
+            treePointer sibling = p->parentp->rightChild;//sibling英文含义为兄弟 
+            if (sibling && sibling->color == RED) {          //右兄为红 
+                sibling->color = BLACK;
+                p->parentp->color = RED;
+                printf("lrotate->1\t\n");
+                leftRotate(p->parentp);
+                sibling = p->parentp->rightChild;
+            }
+             //右兄为不为红且二子为黑 
+            if ((!sibling->leftChild ||sibling->leftChild->color == BLACK) 
+                && (!sibling->rightChild ||sibling->rightChild->color == BLACK)){
+                sibling->color = RED;
+                p = p->parentp;
+            }else {//剩余情况：右兄不为红且二子不全黑 
+                if(!sibling->rightChild || sibling->rightChild->color == BLACK){//右兄右子为黑（左子红） 
+                    sibling->leftChild->color = BLACK;
+                    sibling->color = RED;
+                printf("rrotate->1\t\n");
+                    rightRotate(sibling);
+                    sibling = sibling->parentp;
+                }
+                //只剩下一种情况：右兄左子黑右子红 
+                sibling->color = sibling->parentp->color;
+                sibling->parentp->color = BLACK;
+                sibling->rightChild->color = BLACK;
+                printf("lrotate->2\t\n");
+                leftRotate(sibling->parentp);
+                p = *rootp;
+            }
+        }else{//删除节点在右子树
+            treePointer sibling = p->parentp->leftChild;
+    /*
+        printf("sibling color is %d, p->parent is %d, p->parent->lchild is %d\n", 
+            sibling->color, p->parentp->leftChild->data.key, p->parentp->data.key);*/
+            if(sibling && (sibling->color == RED)){    //左兄为红
+                sibling->color = BLACK;
+                p->parentp->color = RED;
+                rightRotate(p->parentp);
+                printf("rrotate->2\t\n");
+                sibling = p->parentp->leftChild;
+            }
+            //左兄为不为红且二子皆黑
+            if ((!sibling->leftChild || sibling->leftChild->color == BLACK)
+                && (!sibling->rightChild || sibling->rightChild->color == BLACK)){
+                sibling->color = RED;
+                p = p->parentp;
+            }else {//剩余情况：左兄不为红且二子不全黑
+                if (!sibling->leftChild || sibling->leftChild->color == BLACK) {
+                    sibling->rightChild->color = BLACK;
+                    sibling->color = RED;
+                printf("lrotate->3\t\n");
+                    leftRotate(sibling);
+                    sibling = sibling->parentp;
+/*
+                    printf("sibling %d, p is %d,grandp is %d\n", 
+                    sibling->data.key, sibling->parentp->data.key,
+                    sibling->parentp->parentp->data.key);
+*/                }
+                //只剩下一种情况：左兄右子黑左子红 
+                sibling->color = sibling->parentp->color;
+                sibling->parentp->color = BLACK;
+                sibling->leftChild->color = BLACK;
+                printf("rrotate->3\t\n");
+                rightRotate(sibling->parentp);
+                p = *rootp;
+               }
+        }
+    }
+    p->color = BLACK;
+}
+
+void leftRotate(treePointer node)
+{        //把一个节点向左下方移一格，并让他原来的右子节点代替它的位置。
+    assert(node);
+    treePointer right = node->rightChild;
+    treePointer temp = node->parentp;
+    node->rightChild = right->leftChild;
+    if(node->rightChild)
+        node->rightChild->parentp = node;
+    if(node->parentp == NULL){
+        *rootp = right;
+    }else if (node == node->parentp->leftChild) {
+         node->parentp->leftChild = right;
+    }else{
+        node->parentp->rightChild = right;
+    }
+    right->parentp = temp;
+    right->leftChild = node;
+    node->parentp = right;
+}
+
+void rightRotate(treePointer node)
+{        //把一个节点向右下方移一格，并让他原来的左子节点代替它的位置。
+    assert(node);
+    treePointer left = node->leftChild;
+    treePointer temp = node->parentp;
+    node->leftChild = left->rightChild;
+    if(node->leftChild)
+        node->leftChild->parentp = node;
+    if(node->parentp == NULL){
+        *rootp = left;
+    }else if(node == node->parentp->leftChild){
+        node->parentp->leftChild = left;
+    }else{
+        node->parentp->rightChild = left;
+    }
+    left->parentp = temp;
+    left->rightChild = node;
+    node->parentp = left;
+printf("rrotate is ok\n");
+}
+
+void delRedBlackN(treePointer *root, element *k) /* 二叉查找树删除节点操作 */
+{
+    treePointer parent = NULL;    /* parent:记录父节点 */
+    treePointer pcur = *root;      /* pcur:记录当前节点 */
+    treePointer del = pcur;    /* del:记录需要删除的节点 */
+    int color;
+    
+    if(pcur->data.key == k->key && pcur == *root && 
+            (!pcur->leftChild || !pcur->rightChild)){
+        if(!pcur->leftChild && !pcur->rightChild){//根结点无孩，直接删除之。 
+            *root = NULL;
+        }else{                     //根结点有一孩 
+            if(pcur->leftChild){
+                pcur->leftChild->color = BLACK;
+                *root = pcur->leftChild;
+                (*root)->parentp = NULL;
+            }else{
+                pcur->rightChild->color = BLACK;
+                *root = pcur->rightChild;
+                (*root)->parentp = NULL;
+            }
+        }
+        free(pcur);
+        return; 
+    }
+    while(pcur){ /* 不断循环，下移一层，
+                直到找到要删除的节点，或直到为空*/
+        if(pcur->data.key > k->key){
+            parent = pcur;
+            pcur = pcur->leftChild;
+        }else if(pcur->data.key < k->key    ){
+            parent = pcur;
+            pcur = pcur->rightChild;
+        }else{    /* 找要删除的值，pcur即指向该节点，接着进行下一步处理 */
+            treePointer replace; 
+            if(!pcur->leftChild || !pcur->rightChild ){ //pcur无孩或有1孩 
+                if(pcur->color == RED){//删除节点 为红 
+                    if(pcur == pcur->parentp->leftChild)
+                        pcur->parentp->leftChild = 
+                        pcur->leftChild ? pcur->leftChild : pcur->rightChild;
+                    else
+                        pcur->parentp->rightChild = 
+                        pcur->leftChild ? pcur->leftChild : pcur->rightChild;
+                }else{    //删除的是黑结点
+                    replace = pcur->leftChild ? pcur->leftChild : pcur->rightChild;
+                    if(replace && replace->color == RED){  //替换删除结点的为红 
+                        if(pcur == pcur->parentp->leftChild){
+                            pcur->parentp->leftChild = replace;
+                            replace->parentp = pcur->parentp;
+                            replace->color = BLACK;
+                        }else{
+                            pcur->parentp->rightChild = replace;
+                            replace->parentp = pcur->parentp;
+                            replace->color = BLACK;
+                        }
+                    }else{//替换删除结点的为黑 
+                printf("delFixup->\t\n");
+                        delFixup(pcur);
+                        if(pcur == pcur->parentp->leftChild){
+                            pcur->parentp->leftChild = replace;
+                            if(replace)
+                                replace->parentp = pcur->parentp;
+                        }else{
+                            pcur->parentp->rightChild = replace;
+                            if(replace)
+                                replace->parentp = pcur->parentp;
+                        }
+                    }
+                }
+                free(pcur);
+                return;
+            }else{//pcur有2孩 
+                treePointer left = pcur->rightChild;  //left为右子树最左值 
+                treePointer precur = pcur;   /* precur:记录前节点 */ 
+                treePointer tempr, templ, tempp;
+                
+                while(left->leftChild){  /*循环查找右子树中的最小值 */
+                    precur = left;
+                    left = left->leftChild;
+                }
+                //交换节点pcur与left的值，这里很关键.
+                if(left == pcur->rightChild){    //这种情况为右子树根无左孩
+                    //以下把left与pcur结点互换     
+                    color = left->color;
+                    tempr = left->rightChild;
+                    templ = left->leftChild;
+                    tempp = pcur->parentp;;
+                    
+                    left->color = precur->color;
+                    left->leftChild = precur->leftChild;//设置左指针 
+                    left->leftChild->parentp = left;
+                    left->rightChild = precur;//设置右指针 
+                    left->rightChild->parentp = left;//注意：这一行代码更改了pcur->parentp的值！！！！ 
+                    if(pcur == *rootp){//设置父指针 
+                        left->parentp = NULL;
+                    }else{
+                        left->parentp = parent;//为什么不能为pcur->parentp??? 
+                    }
+                    if(parent && pcur == parent->leftChild){
+                        parent->leftChild = left;
+                    }else if(parent && pcur == parent->rightChild){
+                        parent->rightChild = left; 
+                    }else{
+                        *rootp = left;
+                    }
+                    //设置pcur
+                    pcur->parentp = left;
+                    pcur->rightChild = tempr;
+                    if(pcur->rightChild)
+                        pcur->rightChild->parentp = pcur;
+                    pcur->color = color;
+                    pcur->leftChild = templ;
+                    if(pcur->leftChild)
+                        pcur->leftChild->parentp = pcur;
+                    //重新一轮迭代，引导至删除操作 
+                    continue;
+                }else{
+                    color = left->color;
+                    tempr = left->rightChild;
+                    templ = left->leftChild;
+                    left->color = pcur->color;
+                    left->leftChild = pcur->leftChild;//设置左指针 
+                    if(left->leftChild)
+                        left->leftChild->parentp = left;
+                    left->rightChild = pcur->rightChild;//设置右指针
+                    if(left->rightChild)
+                        left->rightChild->parentp = left; 
+                    left->parentp = parent;//设置父指针 
+                    if(parent && pcur == parent->leftChild){
+                        parent->leftChild = left;
+                    }else if(parent && pcur == parent->rightChild){
+                        parent->rightChild = left;
+                    }else{
+                        *root = left;
+                    }
+                    //设置pcur
+                    precur->leftChild = pcur; 
+                    pcur->parentp = precur;
+                    pcur->rightChild = tempr;//设置右指针
+                    if(pcur->rightChild)
+                        pcur->rightChild->parentp = pcur;
+                    pcur->color = color;
+                    pcur->leftChild = templ;//设置左指针 
+                    if(pcur->leftChild)
+                        pcur->leftChild->parentp = pcur;
+                    //重新一轮迭代，引导至删除操作 
+                    continue;
+                } 
+            }
+        }
+    }
+    if(pcur == NULL)/* 说明没找删除的值 */ 
+        printf("没找到您要删除的值!\n") ;
+}
